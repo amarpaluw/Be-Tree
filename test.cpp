@@ -75,7 +75,11 @@ void do_scan(typename betree<Key, Value>::iterator &betit,
 	     betree<Key, Value> &b,
 	     typename std::map<Key, Value> &reference)
 {
+  int i = 1;
   while (refit != reference.end()) {
+    std::cout << "element # " << i++ << std::endl;
+    std::cout << "betit.is_valid = " << ((betit.is_valid) ? "true" : "false") << std::endl;
+    std::cout << "b.end().is_valid = " << ((b.end().is_valid) ? "true" : "false") << std::endl;
     assert(betit != b.end());
     assert(betit.first == refit->first);
     assert(betit.second == refit->second);
@@ -189,20 +193,20 @@ int test(betree<uint64_t, std::string> &b,
       break;
     case 5: // lower-bound scan
       {
-	if (script_output)
-	  fprintf(script_output, "Lower_bound_scan %lu\n", t);
-	auto betit = b.lower_bound(t);
-	auto refit = reference.lower_bound(t);
-	do_scan(betit, refit, b, reference);
+	// if (script_output)
+	//   fprintf(script_output, "Lower_bound_scan %lu\n", t);
+	// auto betit = b.lower_bound(t);
+	// auto refit = reference.lower_bound(t);
+	// do_scan(betit, refit, b, reference);
       }
       break;
     case 6: // scan
       {
-	if (script_output)
-	  fprintf(script_output, "Upper_bound_scan %lu\n", t);
-	auto betit = b.upper_bound(t);
-	auto refit = reference.upper_bound(t);
-	do_scan(betit, refit, b, reference);
+	// if (script_output)
+	//   fprintf(script_output, "Upper_bound_scan %lu\n", t);
+	// auto betit = b.upper_bound(t);
+	// auto refit = reference.upper_bound(t);
+	// do_scan(betit, refit, b, reference);
       }
       break;
     default:
@@ -213,6 +217,73 @@ int test(betree<uint64_t, std::string> &b,
   std::cout << "Test PASSED" << std::endl;
   
   return 0;
+}
+
+
+void benchmark_inserts(betree<uint64_t, std::string> &b,
+		       uint64_t nops,
+		       uint64_t number_of_distinct_keys,
+		       uint64_t random_seed)
+{
+  
+  // Insert into the tree with data
+  uint64_t overall_timer = 0;
+	timer_start(overall_timer);
+  srand(random_seed);
+  for (uint64_t i = 0; i < nops; i++) {
+    uint64_t t = rand() % number_of_distinct_keys;
+    b.insert(t, std::to_string(t) + ":");
+  }
+
+	timer_stop(overall_timer);
+  // printf("# overall: %ld %ld\n", nops, overall_timer);
+  printf("inserts,%ld,%ld,%ld\n", number_of_distinct_keys, nops, overall_timer);
+}
+
+void benchmark_deletes(betree<uint64_t, std::string> &b,
+		       uint64_t nops,
+		       uint64_t number_of_distinct_keys,
+		       uint64_t random_seed)
+{
+  
+  // Pre-load the tree with data
+  srand(random_seed);
+  for (uint64_t i = 0; i < nops; i++) {
+    uint64_t t = rand() % number_of_distinct_keys;
+    b.update(t, std::to_string(t) + ":");
+  }
+
+	// Now go back and query it
+  srand(random_seed);
+  uint64_t overall_timer = 0;
+	timer_start(overall_timer);
+  for (uint64_t i = 0; i < nops; i++) {
+    uint64_t t = rand() % number_of_distinct_keys;
+    b.erase(t);
+  }
+	timer_stop(overall_timer);
+  // printf("# overall: %ld %ld\n", nops, overall_timer);
+  printf("deletes,%ld,%ld,%ld\n", number_of_distinct_keys, nops, overall_timer);
+}
+
+void benchmark_updates(betree<uint64_t, std::string> &b,
+		       uint64_t nops,
+		       uint64_t number_of_distinct_keys,
+		       uint64_t random_seed)
+{
+  
+  // Update the tree with data
+  uint64_t overall_timer = 0;
+	timer_start(overall_timer);
+  srand(random_seed);
+  for (uint64_t i = 0; i < nops; i++) {
+    uint64_t t = rand() % number_of_distinct_keys;
+    b.update(t, std::to_string(t) + ":");
+  }
+
+	timer_stop(overall_timer);
+  // printf("# overall: %ld %ld\n", nops, overall_timer);
+  printf("updates,%ld,%ld,%ld\n", number_of_distinct_keys, nops, overall_timer);
 }
 
 void benchmark_upserts(betree<uint64_t, std::string> &b,
@@ -357,7 +428,10 @@ int main(int argc, char **argv)
   if (mode == NULL ||
       (strcmp(mode, "test") != 0
        && strcmp(mode, "benchmark-upserts") != 0
-			 && strcmp(mode, "benchmark-queries") != 0)) {
+			 && strcmp(mode, "benchmark-queries") != 0
+       && strcmp(mode, "benchmark-inserts") != 0
+       && strcmp(mode, "benchmark-deletes") != 0
+       && strcmp(mode, "benchmark-updates") != 0)) {
     std::cerr << "Must specify a mode of \"test\" or \"benchmark\"" << std::endl;
     usage(argv[0]);
     exit(1);
@@ -414,6 +488,13 @@ int main(int argc, char **argv)
     benchmark_upserts(b, nops, number_of_distinct_keys, random_seed);
   else if (strcmp(mode, "benchmark-queries") == 0)
     benchmark_queries(b, nops, number_of_distinct_keys, random_seed);
+  else if (strcmp(mode, "benchmark-inserts") == 0)
+    benchmark_inserts(b, nops, number_of_distinct_keys, random_seed);
+  else if (strcmp(mode, "benchmark-deletes") == 0)
+    benchmark_deletes(b, nops, number_of_distinct_keys, random_seed);
+  else if (strcmp(mode, "benchmark-updates") == 0)
+    benchmark_updates(b, nops, number_of_distinct_keys, random_seed);
+
   
   if (script_input)
     fclose(script_input);

@@ -186,7 +186,7 @@ public:
   class pin {
   public:
     const Referent * operator->(void) const {
-      assert(ss->objects.count(target) > 0);
+      // assert(ss->objects.count(target) > 0);
       debug(std::cout << "Accessing (constly) " << target
 	    << " (" << ss->objects[target]->target << ")" << std::endl);
       access(target, false);
@@ -194,7 +194,7 @@ public:
     }
 
     Referent * operator->(void) {
-      assert(ss->objects.count(target) > 0);
+      // assert(ss->objects.count(target) > 0);
       debug(std::cout << "Accessing " << target
 	    << " (" << ss->objects[target]->target << ")" << std::endl);
       access(target, true);
@@ -238,7 +238,7 @@ public:
     }
 
     void dopin(swap_space *newss, uint64_t newtarget) {
-      assert(ss == NULL && target == 0);
+      // assert(ss == NULL && target == 0);
       ss = newss;
       target = newtarget;
       if (target > 0) {
@@ -279,7 +279,7 @@ public:
       ss = other.ss;
       target = other.target;
       if (target > 0) {
-	assert(ss->objects.count(target) > 0);
+	// assert(ss->objects.count(target) > 0);
 	ss->objects[target]->refcount++;
       }
     }
@@ -291,7 +291,7 @@ public:
     void depoint(void) {
       if (target == 0)
 	return;
-      assert(ss->objects.count(target) > 0);
+      // assert(ss->objects.count(target) > 0);
 
       object *obj = ss->objects[target];
       assert(obj->refcount > 0);
@@ -324,7 +324,7 @@ public:
 	ss = other.ss;
 	target = other.target;
 	if (target > 0) {
-	  assert(ss->objects.count(target) > 0);
+	  // assert(ss->objects.count(target) > 0);
 	  ss->objects[target]->refcount++;
 	}
       }
@@ -361,18 +361,18 @@ public:
     }
     
     bool is_in_memory(void) const {
-      assert(ss->objects.count(target) > 0);
+      // assert(ss->objects.count(target) > 0);
       return target > 0 && ss->objects[target]->target != NULL;
     }
 
     bool is_dirty(void) const {
-      assert(ss->objects.count(target) > 0);
+      // assert(ss->objects.count(target) > 0);
       return target > 0 && ss->objects[target]->target && ss->objects[target]->target_is_dirty;
     }
 
     void _serialize(std::iostream &fs, serialization_context &context) {
-      assert(target > 0);
-      assert(context.ss.objects.count(target) > 0);
+      // assert(target > 0);
+      // assert(context.ss.objects.count(target) > 0);
       fs << target << " ";
       target = 0;
       assert(fs.good());
@@ -384,7 +384,7 @@ public:
       ss = &context.ss;
       fs >> target;
       assert(fs.good());
-      assert(context.ss.objects.count(target) > 0);
+      // assert(context.ss.objects.count(target) > 0);
       // We just created a new reference to this object and
       // invalidated the on-disk reference, so the total refcount
       // stays the same.

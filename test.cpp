@@ -80,6 +80,10 @@ void do_scan(typename betree<Key, Value>::iterator &betit,
     std::cout << "element # " << i++ << std::endl;
     std::cout << "betit.is_valid = " << ((betit.is_valid) ? "true" : "false") << std::endl;
     std::cout << "b.end().is_valid = " << ((b.end().is_valid) ? "true" : "false") << std::endl;
+    std::cout << "betit.first = " << betit.first << std::endl;
+    std::cout << "betit.second = " << betit.second << std::endl;
+    std::cout << "refit->first = " << refit->first << std::endl;
+    std::cout << "refit->second = " << refit->second << std::endl;
     assert(betit != b.end());
     assert(betit.first == refit->first);
     assert(betit.second == refit->second);
@@ -89,6 +93,27 @@ void do_scan(typename betree<Key, Value>::iterator &betit,
     }
     ++betit;
   }
+  assert(betit == b.end());
+}
+
+template<class Key, class Value>
+void do_scan(typename betree<Key, Value>::iterator &betit,
+	     betree<Key, Value> &b)
+{
+  uint64_t i = 0;
+  uint64_t overall_timer = 0;
+  uint64_t checkpoint = 1024;
+  timer_start(overall_timer);
+  while (betit != b.end()) {
+    ++betit;
+    if (++i % checkpoint == 0) {
+      uint64_t checkpoint_timer = overall_timer;
+      timer_stop(checkpoint_timer);
+      printf("full scan,%ld,%ld\n", i, checkpoint_timer);
+    }
+  }
+  timer_stop(overall_timer);
+  printf("full scan,%ld,%ld\n", i, overall_timer);
   assert(betit == b.end());
 }
 
@@ -111,7 +136,7 @@ void usage(char *name)
     << "        benchmark modes:"                                                                               << std::endl
     << "          upserts    "                                                                                  << std::endl
     << "          queries    "                                                                                  << std::endl
-    << "  Betree tuning parameters:" << std::endl
+    << "  betree tuning parameters:" << std::endl
     << "    -N <max_node_size>            (in elements)     [ default: " << DEFAULT_TEST_MAX_NODE_SIZE  << " ]" << std::endl
     << "    -f <min_flush_size>           (in elements)     [ default: " << DEFAULT_TEST_MIN_FLUSH_SIZE << " ]" << std::endl
     << "    -C <max_cache_size>           (in betree nodes) [ default: " << DEFAULT_TEST_CACHE_SIZE     << " ]" << std::endl
@@ -333,6 +358,103 @@ void benchmark_queries(betree<uint64_t, std::string> &b,
   printf("queries,%ld,%ld,%ld\n", number_of_distinct_keys, nops, overall_timer);
 }
 
+
+void benchmark_all(betree<uint64_t, std::string> &b,
+		       uint64_t nops,
+		       uint64_t number_of_distinct_keys,
+		       uint64_t random_seed)
+{
+  // Declare test variables
+  uint64_t overall_timer;
+  uint64_t checkpoint;
+  uint64_t checkpoint_timer;
+  
+  // Insert test
+  srand(random_seed);
+  overall_timer = 0;
+  timer_start(overall_timer);
+  checkpoint = 2;
+  for (uint64_t i = 0; i < number_of_distinct_keys; i++) {
+    if (i == checkpoint) {
+      checkpoint_timer = overall_timer;
+      timer_stop(checkpoint_timer);
+      printf("insert,%ld,%ld\n", i, checkpoint_timer);
+      checkpoint *= 2;
+    }
+    b.insert(i, std::to_string(i) + ":");
+  }
+  timer_stop(overall_timer);
+  printf("insert,%ld,%ld\n", number_of_distinct_keys, overall_timer);
+
+  // Update test
+  srand(random_seed);
+  overall_timer = 0;
+  timer_start(overall_timer);
+  checkpoint = 2;
+  for (uint64_t i = 0; i < number_of_distinct_keys; i++) {
+    if (i == checkpoint) {
+      checkpoint_timer = overall_timer;
+      timer_stop(checkpoint_timer);
+      printf("update,%ld,%ld\n", i, checkpoint_timer);
+      checkpoint *= 2;
+    }
+    b.update(i, std::to_string(i) + ":");
+  }
+  timer_stop(overall_timer);
+  printf("update,%ld,%ld\n", number_of_distinct_keys, overall_timer);
+
+  // Queries test
+  srand(random_seed);
+  overall_timer = 0;
+  timer_start(overall_timer);
+  checkpoint = 100;
+  for (uint64_t i = 0; i < nops; i++) {
+    if (i % checkpoint == 0) {
+      checkpoint_timer = overall_timer;
+      timer_stop(checkpoint_timer);
+      printf("queries,%ld,%ld\n", i, checkpoint_timer);
+    }
+    uint64_t t = rand() % number_of_distinct_keys;
+    b.query(t);
+  }
+  timer_stop(overall_timer);
+  printf("queries,%ld,%ld\n", nops, overall_timer);
+
+  // Full scan test
+  auto betit = b.begin();
+  do_scan(betit, b);
+
+  // Delete test
+  srand(random_seed);
+  overall_timer = 0;
+  timer_start(overall_timer);
+  checkpoint = 2;
+  for (uint64_t i = 0; i < number_of_distinct_keys; i++) {
+    if (i == checkpoint) {
+      checkpoint_timer = overall_timer;
+      timer_stop(checkpoint_timer);
+      printf("delete,%ld,%ld\n", i, checkpoint_timer);
+      checkpoint *= 2;
+    }
+    b.erase(i);
+  }
+  timer_stop(overall_timer);
+  printf("delete,%ld,%ld\n", number_of_distinct_keys, overall_timer);
+
+	// // Now go back and query it
+  // srand(random_seed);
+  // uint64_t overall_timer = 0;
+	// timer_start(overall_timer);
+  // for (uint64_t i = 0; i < nops; i++) {
+  //   uint64_t t = rand() % number_of_distinct_keys;
+  //   b.query(t);
+  // }
+	// timer_stop(overall_timer);
+  // // printf("# overall: %ld %ld\n", nops, overall_timer);
+  // printf("queries,%ld,%ld,%ld\n", number_of_distinct_keys, nops, overall_timer);
+}
+
+
 int main(int argc, char **argv)
 {
   char *mode = NULL;
@@ -431,7 +553,8 @@ int main(int argc, char **argv)
 			 && strcmp(mode, "benchmark-queries") != 0
        && strcmp(mode, "benchmark-inserts") != 0
        && strcmp(mode, "benchmark-deletes") != 0
-       && strcmp(mode, "benchmark-updates") != 0)) {
+       && strcmp(mode, "benchmark-updates") != 0
+       && strcmp(mode, "benchmark-all") != 0)) {
     std::cerr << "Must specify a mode of \"test\" or \"benchmark\"" << std::endl;
     usage(argv[0]);
     exit(1);
@@ -494,6 +617,8 @@ int main(int argc, char **argv)
     benchmark_deletes(b, nops, number_of_distinct_keys, random_seed);
   else if (strcmp(mode, "benchmark-updates") == 0)
     benchmark_updates(b, nops, number_of_distinct_keys, random_seed);
+  else if (strcmp(mode, "benchmark-all") == 0)
+    benchmark_all(b, nops, number_of_distinct_keys, random_seed);
 
   
   if (script_input)
